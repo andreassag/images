@@ -31,17 +31,16 @@ RUN set -eux; \
 RUN mkdir -p /opt/companion/bin
 
 # 1. skani
-ARG SKANI_VERSION=v0.2.2
 RUN set -eux; \
     ARCH="$(uname -m)"; \
     if [ "$ARCH" = "x86_64" ]; then \
-        curl -fsSL "https://github.com/bluenote-1577/skani/releases/download/${SKANI_VERSION}/skani_${SKANI_VERSION}_x86_64-unknown-linux-musl.tar.gz" -o skani.tar.gz; \
-    elif [ "$ARCH" = "aarch64" ]; then \
-        curl -fsSL "https://github.com/bluenote-1577/skani/releases/download/${SKANI_VERSION}/skani_${SKANI_VERSION}_aarch64-unknown-linux-musl.tar.gz" -o skani.tar.gz; \
-    fi; \
-    tar -xzf skani.tar.gz -C /opt/companion/bin; \
-    chmod +x /opt/companion/bin/skani; \
-    rm skani.tar.gz
+        curl -fsSL "https://github.com/bluenote-1577/skani/releases/download/latest/skani" -o /opt/companion/bin/skani; \
+        chmod +x /opt/companion/bin/skani; \
+    else \
+        apt-get update && apt-get install -y --no-install-recommends cargo rustc; \
+        cargo install --root /opt/companion skani; \
+        rm -rf /root/.cargo /var/lib/apt/lists/*; \
+    fi
 
 # 2. mmseqs2
 ARG MMSEQS2_VERSION=15-6f452

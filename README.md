@@ -10,9 +10,9 @@ This repository provides reproducible, optimized OCI/Docker images built from so
 
 | Tool | Description | Versions | Container Type |
 |------|-------------|----------|----------------|
-| **clinker** | Gene cluster comparison and visualisation (`clinker-py`) | 0.0.12, 0.0.19 – 0.0.32 | Built from source (`python:3.12-slim`) |
-| **cblaster** | Remote homologue detection and gene cluster search (ships with `cagecleaner`, `diamond`, `skani`, `mmseqs2`, `datasets`, `any2fasta`) | 1.3.9, 1.3.11 – 1.3.20, 1.4.0 | Built from source (`python:3.12-slim`) |
-| **defense‑finder** | Systematic search for anti‑phage defense systems (ships with `HMMER 3.4`) | 1.2.2, 1.3.0, 2.0.0, 2.0.1 | Built from source (`python:3.12-slim`) |
+| **clinker** | Gene cluster comparison and visualisation (`clinker-py`) | 0.0.30, 0.0.31, 0.0.32 | Built from source (`python:3.12-slim`) |
+| **cblaster** | Remote homologue detection and gene cluster search (ships with `cagecleaner`, `diamond`, `skani`, `mmseqs2`, `datasets`, `any2fasta`) | 1.3.19, 1.3.20, 1.4.0 | Built from source (`python:3.12-slim`) |
+| **defense‑finder** | Systematic search for anti‑phage defense systems (ships with `HMMER 3.4`) | 1.3.0, 2.0.0, 2.0.1 | Built from source (`python:3.12-slim`) |
 | **pymol** | Molecular visualisation system with X11/Wayland GUI forwarding & publication presets | 3.0.0 | GUI / Headless (`micromamba:debian-slim`) |
 
 Command-line utilities (`clinker`, `cblaster`, `defense-finder`) are built from upstream source code and official releases using multi-stage Python slim Dockerfiles rather than bioconda distributions, yielding lightweight, secure containers.

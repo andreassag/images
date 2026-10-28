@@ -1,0 +1,2 @@
+# Ensure AGENTS.md is tracked even if ignored globally
+!AGENTS.md
