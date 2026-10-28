@@ -1,0 +1,9 @@
+# Publication-quality PyMOL defaults
+set bg_rgb, black
+set antialias, 2
+set ray_trace_mode, 1
+set ray_shadows, 1
+set cartoon_fancy_helices, 1
+set cartoon_flat_sheets, 1
+set cartoon_smooth_loops, 1
+set depth_cue, 1

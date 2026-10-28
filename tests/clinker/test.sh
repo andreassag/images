@@ -23,9 +23,19 @@ else
   fail "Non-zero exit code with --help"
 fi
 
-# 2. Help output mentions clinker
+# 2. Version check
 echo ""
-echo "2) Help output sanity"
+echo "2) Version check"
+if OUTPUT=$(docker run --rm "${IMAGE}" --version 2>&1) && \
+   echo "${OUTPUT}" | grep -qF "${EXPECTED_VERSION}"; then
+  pass "Version string contains ${EXPECTED_VERSION}"
+else
+  fail "Version string missing (output: ${OUTPUT:0:200})"
+fi
+
+# 3. Help output sanity
+echo ""
+echo "3) Help output sanity"
 if OUTPUT=$(docker run --rm "${IMAGE}" --help 2>&1) && \
    echo "${OUTPUT}" | grep -qiE "clinker"; then
   pass "Help output mentions clinker"

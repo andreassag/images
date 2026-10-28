@@ -1,128 +1,143 @@
 <!--
-This repository contains container definitions for bioinformatics
-utilities. Each tool is organised by release version so that we can
-build, test and publish immutable images for every supported release
-while also maintaining convenient `latest`, `major` and `minor` tags.
+This repository contains container definitions for bioinformatics and molecular
+visualisation utilities. Each tool provides immutable images for supported releases
+while maintaining convenient `latest`, `major`, and `minor` tags.
 -->
 
 # Container images for bioinformatics tools
 
-This repository provides a simple, reproducible way to build, test and push
-Docker/OCI images for the following command‑line utilities:
+This repository provides reproducible, optimized OCI/Docker images built from source for bioinformatics and molecular visualisation tools:
 
-| Tool | Description | Versions |
-|------|-------------|----------|
-| **clinker** | Gene cluster comparison and visualisation (`clinker-py`) | 0.0.12, 0.0.19 – 0.0.32 |
-| **cblaster** | Remote homologue detection and gene cluster search (ships with `cagecleaner`) | 1.3.9, 1.3.11 – 1.3.20, 1.4.0 |
-| **defense‑finder** | Systematic search for anti‑phage defense systems | 1.0.9, 1.1.1, 1.2.0 – 1.2.2, 1.3.0, 2.0.0, 2.0.1 |
-| **rgi** | Resistance Gene Identifier (CARD) | 5.0.0, 5.1.0 – 5.2.1, 6.0.0 – 6.0.5 |
+| Tool | Description | Versions | Container Type |
+|------|-------------|----------|----------------|
+| **clinker** | Gene cluster comparison and visualisation (`clinker-py`) | 0.0.12, 0.0.19 – 0.0.32 | Built from source (`python:3.12-slim`) |
+| **cblaster** | Remote homologue detection and gene cluster search (ships with `cagecleaner`, `diamond`, `skani`, `mmseqs2`, `datasets`, `any2fasta`) | 1.3.9, 1.3.11 – 1.3.20, 1.4.0 | Built from source (`python:3.12-slim`) |
+| **defense‑finder** | Systematic search for anti‑phage defense systems (ships with `HMMER 3.4`) | 1.2.2, 1.3.0, 2.0.0, 2.0.1 | Built from source (`python:3.12-slim`) |
+| **pymol** | Molecular visualisation system with X11/Wayland GUI forwarding & publication presets | 3.0.0 | GUI / Headless (`micromamba:debian-slim`) |
 
-All tools are installed from the [Bioconda](https://bioconda.github.io/)
-package channel using **micromamba** running on an Alpine base image.
-The resulting containers are small and suitable for use in pipelines,
-Kubernetes jobs, or as base images for other workflows.
+Command-line utilities (`clinker`, `cblaster`, `defense-finder`) are built from upstream source code and official releases using multi-stage Python slim Dockerfiles rather than bioconda distributions, yielding lightweight, secure containers.
+
+PyMOL 3.x is packaged with GUI forwarding libraries and publication-quality ray-tracing presets. See [pymol/README.md](file:///home/andre/repo/images/pymol/README.md) for detailed GUI forwarding and compose instructions.
+
+---
 
 ## Repository layout
 
 ```
 /
 ├─ clinker/
-│  ├─ 0.0.12/Dockerfile
-│  ├─ 0.0.19/Dockerfile
-│  └─ ...
+│  ├─ Dockerfile                           # Parameterised via ARG TOOL_VERSION
+│  └─ versions.txt                         # Supported releases
 ├─ cblaster/
-│  ├─ 1.3.9/Dockerfile
-│  ├─ 1.3.11/Dockerfile
-│  └─ ...
+│  ├─ Dockerfile
+│  └─ versions.txt
 ├─ defense-finder/
-│  ├─ 1.0.9/Dockerfile
-│  ├─ 2.0.1/Dockerfile
-│  └─ ...
-├─ rgi/
-│  ├─ 5.0.0/Dockerfile
-│  ├─ 6.0.5/Dockerfile
-│  └─ ...
+│  ├─ Dockerfile
+│  └─ versions.txt
+├─ pymol/
+│  ├─ Dockerfile
+│  ├─ versions.txt
+│  ├─ README.md                            # Display forwarding & usage guide
+│  ├─ docker-compose.yml                   # Compose setup
+│  ├─ docker-compose.linux.yml             # Linux Wayland/DRI GPU compose
+│  ├─ docker-compose.mac.yml               # macOS XQuartz compose
+│  ├─ pymolrc / pymolrc.py                 # Publication-quality presets
+│  ├─ license.lic.example                  # License mount instructions
+│  └─ examples/render_structure.py         # Headless ray-tracing script
 ├─ tests/
 │  ├─ clinker/test.sh
 │  ├─ cblaster/test.sh
 │  ├─ defense-finder/test.sh
-│  └─ rgi/test.sh
+│  └─ pymol/test.sh
+├─ scripts/
+│  └─ generate-dependabot.sh               # Dependabot generator
 ├─ .github/
-│  ├─ workflows/build-container.yml        # CI workflow
-│  └─ dependabot.yml                       # dependency updates
+│  ├─ workflows/build-container.yml        # CI matrix & caching workflow
+│  └─ dependabot.yml                       # Dependency updates
+├─ AGENTS.md                               # Guidelines for AI / Antigravity
 └─ README.md
 ```
 
-Each version directory contains a nearly‑identical Dockerfile that
-parameterises the package version via an `ARG`. New releases can be added
-simply by creating a new directory and copying one of the existing
-Dockerfiles, then updating the `ARG` value.
+---
 
 ## Building locally
 
-You can build an image manually with `docker build` or `podman`:
+Each image can be built locally using `docker build` or `podman` by supplying `--build-arg TOOL_VERSION=<version>`:
 
 ```sh
-docker build -t clinker:0.0.32          ./clinker/0.0.32
-docker build -t cblaster:1.4.0          ./cblaster/1.4.0
-docker build -t defense-finder:2.0.1    ./defense-finder/2.0.1
-docker build -t rgi:6.0.5               ./rgi/6.0.5
+# clinker
+docker build -t clinker:0.0.32 --build-arg TOOL_VERSION=0.0.32 ./clinker
+
+# cblaster
+docker build -t cblaster:1.4.0 --build-arg TOOL_VERSION=1.4.0 ./cblaster
+
+# defense-finder
+docker build -t defense-finder:2.0.1 --build-arg TOOL_VERSION=2.0.1 ./defense-finder
+
+# pymol
+docker build -t pymol:3.0.0 --build-arg TOOL_VERSION=3.0.0 ./pymol
 ```
 
-Replace the tool name and version string as needed.
-The containers rely only on the packages installed by micromamba, so no
-additional build dependencies are required.
+---
 
 ## Testing locally
 
-Each tool has a test suite under `tests/<tool>/test.sh`. The script
-expects two arguments: the image reference and the expected version.
+Each tool has a functional test script in `tests/<tool>/test.sh`. The script accepts the built image tag and expected version:
 
 ```sh
-docker build -t test/clinker:0.0.32 ./clinker/0.0.32
+# Test clinker
+docker build -t test/clinker:0.0.32 --build-arg TOOL_VERSION=0.0.32 ./clinker
 tests/clinker/test.sh test/clinker:0.0.32 0.0.32
+
+# Test defense-finder
+docker build -t test/defense-finder:2.0.1 --build-arg TOOL_VERSION=2.0.1 ./defense-finder
+tests/defense-finder/test.sh test/defense-finder:2.0.1 2.0.1
+
+# Test cblaster
+docker build -t test/cblaster:1.4.0 --build-arg TOOL_VERSION=1.4.0 ./cblaster
+tests/cblaster/test.sh test/cblaster:1.4.0 1.4.0
+
+# Test pymol (headless)
+docker build -t test/pymol:3.0.0 --build-arg TOOL_VERSION=3.0.0 ./pymol
+tests/pymol/test.sh test/pymol:3.0.0 3.0.0
 ```
+
+---
 
 ## Continuous Integration
 
-A single GitHub Actions workflow (`.github/workflows/build-container.yml`)
-runs on every push to `main` and on pull requests that touch a `Dockerfile`
-or a test script. The logic is as follows:
+GitHub Actions workflow (`.github/workflows/build-container.yml`) automatically detects changes:
+1. **Detect Changes**:
+   - `<tool>/Dockerfile` modified: Builds, tests, and pushes **all** versions listed in `<tool>/versions.txt`.
+   - `<tool>/versions.txt` modified: Parses newly added version lines and builds, tests, and pushes **only those added versions**.
+   - `tests/<tool>/` modified: Builds and tests all versions for that tool (**no push** to registry).
+2. **Matrix Build**:
+   - Multi-stage parallel builds with scoped BuildKit GitHub Actions cache (`scope=${{ matrix.tool }}`).
+   - OCI metadata labels attached linking images to the repository.
+   - Tags published on `main`: `:${TOOL_VERSION}`, plus `:latest`, `:${MAJOR}`, and `:${MINOR}` for the highest version.
 
-1. A **detect‑changes** job determines which `tool/version` pairs are
-   affected using `git diff`:
-   - A changed `Dockerfile` → build, test, **and push** that specific version.
-   - A changed test script → build and test **all** versions of that tool,
-     but **no push**.
-   - If nothing is affected the workflow exits early.
-2. A **build** job uses a dynamic matrix of affected versions. For each
-   entry it:
-   - **Builds** the image locally
-   - **Runs the functional test suite** against it
-   - **Pushes** the image to GHCR only when the `Dockerfile` changed and
-     the event is a push to `main`
+---
 
-The workflow also supports manual invocation via `workflow_dispatch`, which
-rebuilds, tests, and pushes every image.
+## Running PyMOL
 
-## Dependency updates
+For full details on configuring X11, Wayland, XQuartz (macOS), WSLg (Windows), and mounting licenses, refer to [`pymol/README.md`](file:///home/andre/repo/images/pymol/README.md).
 
-A `dependabot.yml` configuration keeps the GitHub Actions and the base images up to date. Pull requests are opened weekly
-whenever new versions are available; they are labeled `dependencies` and
-either `github-actions` or `docker`.
+Quick test run (headless):
+```sh
+docker run --rm ghcr.io/andreassag/pymol:latest pymol -cq -d "print('PyMOL works!')"
+```
 
-## Contributing
+---
 
-1. Create a new `<tool>/<version>/Dockerfile` directory (copy an existing one
-   and update the `ARG`).
-2. Add or update the test script in `tests/<tool>/test.sh`.
-3. Build and test locally to verify.
-4. Commit and push; the CI will test and publish images automatically.
+## Contributing & Guidelines
+
+Please refer to [`AGENTS.md`](file:///home/andre/repo/images/AGENTS.md) for architectural guidelines, build-from-source conventions, versioning workflows, and Dependabot synchronization rules.
+
+---
 
 ## License & Attribution
 
-This repository does not contain the tools themselves, which are
-distributed under their respective licenses.
+This repository does not contain the tools themselves, which are distributed under their respective licenses.
 The container definitions are provided under the [MIT License](LICENSE).
 
 ---

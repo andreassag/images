@@ -4,13 +4,22 @@ on:
   pull_request:
     paths:
       - "**/Dockerfile"
+      - "**/versions.txt"
+      - "pymol/**"
       - "tests/**"
   push:
     branches: [main]
     paths:
       - "**/Dockerfile"
+      - "**/versions.txt"
+      - "pymol/**"
       - "tests/**"
   workflow_dispatch:
+    inputs:
+      tool:
+        description: "Tool to build (or 'all')"
+        required: false
+        default: "all"
 
 # Ensure only one build runs at a time per branch
 concurrency:
@@ -35,7 +44,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Detect changed Dockerfiles
+      - name: Detect changed tools and versions
         id: changes
         run: |
           set -euo pipefail
@@ -49,26 +58,44 @@ jobs:
             BASE=""
           fi
 
-          # ── Helper: list every tool/version in the repo ────────
-          all_pairs() {
-            find . -mindepth 3 -maxdepth 3 -name Dockerfile \
+          DISPATCH_TOOL="${{ github.event.inputs.tool || 'all' }}"
+
+          # ── Helper: list all known tools ───────────────────────
+          all_tools() {
+            find . -mindepth 2 -maxdepth 2 -name Dockerfile \
               -not -path './.github/*' \
               -printf '%P\n' | sed 's|/Dockerfile$||' | sort -u
           }
 
-          # ── Helper: highest version for a given tool ───────────
+          # ── Helper: list all tool/version pairs ────────────────
+          all_pairs() {
+            local tools
+            if [[ "$DISPATCH_TOOL" != "all" && -n "$DISPATCH_TOOL" ]]; then
+              tools="$DISPATCH_TOOL"
+            else
+              tools=$(all_tools)
+            fi
+            for t in $tools; do
+              if [[ -f "${t}/versions.txt" ]]; then
+                while IFS= read -r v || [[ -n "$v" ]]; do
+                  [[ -z "$v" || "$v" =~ ^# ]] && continue
+                  echo "${t}/${v}"
+                done < "${t}/versions.txt"
+              fi
+            done | sort -u
+          }
+
+          # ── Helper: latest version for a tool from versions.txt ─
           latest_version() {
             local tool="$1"
-            find "$tool" -maxdepth 1 -mindepth 1 -type d 2>/dev/null \
-              -printf '%f\n' | sort -V | tail -1 || true
+            if [[ -f "${tool}/versions.txt" ]]; then
+              grep -v '^[[:space:]]*#' "${tool}/versions.txt" | grep -v '^[[:space:]]*$' | sort -V | tail -1 || true
+            fi
           }
 
           # ── Collect pairs to build ─────────────────────────────
-          # PUSHABLE_PAIRS: Dockerfile changed → build + push
-          # PAIRS: all pairs that need building/testing (superset)
           NULL_SHA="0000000000000000000000000000000000000000"
           if [[ -z "$BASE" || "$BASE" == "$NULL_SHA" ]]; then
-            # workflow_dispatch or initial push → build and push everything
             PAIRS=$(all_pairs)
             PUSHABLE_PAIRS="$PAIRS"
           else
@@ -76,23 +103,35 @@ jobs:
             PAIRS=""
             PUSHABLE_PAIRS=""
 
-            # Dockerfiles that changed → build + push that specific version
-            DF_PAIRS=$(echo "$CHANGED" | \
-              grep -E '^[^./][^/]*/[^/]+/Dockerfile$' | \
-              sed 's|/Dockerfile$||' || true)
-            PAIRS=$(printf '%s\n%s' "$PAIRS" "$DF_PAIRS")
-            PUSHABLE_PAIRS=$(printf '%s\n%s' "$PUSHABLE_PAIRS" "$DF_PAIRS")
-
-            # Test script changed → test ALL versions of that tool (no push)
-            TOOLS=$(echo "$CHANGED" | \
-              grep -E '^tests/[^/]+/' | \
-              sed 's|^tests/||; s|/.*||' | sort -u || true)
-            for tool in $TOOLS; do
-              if [[ -d "$tool" ]]; then
-                for dir in "$tool"/*/; do
-                  [[ -f "${dir}Dockerfile" ]] && \
-                    PAIRS=$(printf '%s\n%s' "$PAIRS" "${dir%/}")
+            # Check every tool
+            for tool in $(all_tools); do
+              # 1. Did <tool>/Dockerfile or any build context asset in <tool>/ change? (excluding versions.txt)
+              if [ -n "$(echo "$CHANGED" | grep -E "^${tool}/" | grep -vE "^${tool}/versions\.txt$" || true)" ]; then
+                if [[ -f "${tool}/versions.txt" ]]; then
+                  while IFS= read -r v || [[ -n "$v" ]]; do
+                    [[ -z "$v" || "$v" =~ ^# ]] && continue
+                    PAIRS=$(printf '%s\n%s/%s' "$PAIRS" "$tool" "$v")
+                    PUSHABLE_PAIRS=$(printf '%s\n%s/%s' "$PUSHABLE_PAIRS" "$tool" "$v")
+                  done < "${tool}/versions.txt"
+                fi
+              # 2. Did <tool>/versions.txt change?
+              elif echo "$CHANGED" | grep -qx "${tool}/versions.txt"; then
+                ADDED_VERSIONS=$(git diff "$BASE" HEAD -- "${tool}/versions.txt" | \
+                  grep '^\+[^+]' | sed 's/^\+//' | tr -d '\r' | grep -v '^[[:space:]]*#' | grep -v '^[[:space:]]*$' || true)
+                for v in $ADDED_VERSIONS; do
+                  PAIRS=$(printf '%s\n%s/%s' "$PAIRS" "$tool" "$v")
+                  PUSHABLE_PAIRS=$(printf '%s\n%s/%s' "$PUSHABLE_PAIRS" "$tool" "$v")
                 done
+              fi
+
+              # 3. Did tests/<tool>/test.sh change? (test all versions, no push)
+              if echo "$CHANGED" | grep -qE "^tests/${tool}/"; then
+                if [[ -f "${tool}/versions.txt" ]]; then
+                  while IFS= read -r v || [[ -n "$v" ]]; do
+                    [[ -z "$v" || "$v" =~ ^# ]] && continue
+                    PAIRS=$(printf '%s\n%s/%s' "$PAIRS" "$tool" "$v")
+                  done < "${tool}/versions.txt"
+                fi
               fi
             done
 
@@ -154,11 +193,13 @@ jobs:
       - name: Build image locally
         uses: docker/build-push-action@v7
         with:
-          context: ./${{ matrix.tool }}/${{ matrix.version }}
+          context: ./${{ matrix.tool }}
+          build-args: |
+            TOOL_VERSION=${{ matrix.version }}
           load: true
           tags: test/${{ matrix.tool }}:${{ matrix.version }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.tool }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.tool }}
 
       - name: Run functional tests
         run: |
@@ -198,8 +239,14 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.pushable == true
         uses: docker/build-push-action@v7
         with:
-          context: ./${{ matrix.tool }}/${{ matrix.version }}
+          context: ./${{ matrix.tool }}
+          build-args: |
+            TOOL_VERSION=${{ matrix.version }}
           push: true
           tags: ${{ steps.tags.outputs.tags }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.description=Container image for ${{ matrix.tool }} ${{ matrix.version }}
+            org.opencontainers.image.version=${{ matrix.version }}
+          cache-from: type=gha,scope=${{ matrix.tool }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.tool }}

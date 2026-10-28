@@ -1,0 +1,18 @@
+services:
+  pymol:
+    image: ghcr.io/andreassag/pymol:latest
+    build:
+      context: .
+      args:
+        TOOL_VERSION: 3.0.0
+    container_name: pymol
+    environment:
+      - DISPLAY=${DISPLAY}
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - .:/workspace
+      - ./license.lic:/home/pymol/.pymol/license.lic:ro
+    network_mode: host
+    ipc: host
+    stdin_open: true
+    tty: true

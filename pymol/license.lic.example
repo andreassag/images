@@ -1,0 +1,7 @@
+# PyMOL License File Example
+# If you possess an academic or commercial license for PyMOL, copy your license file
+# to `license.lic` in this directory (or mount it to /home/pymol/.pymol/license.lic).
+#
+# Format example:
+# PACKAGE pymol ...
+# SIGN="..."

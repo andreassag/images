@@ -1,0 +1,24 @@
+services:
+  pymol:
+    image: ghcr.io/andreassag/pymol:latest
+    build:
+      context: .
+      args:
+        TOOL_VERSION: 3.0.0
+    container_name: pymol
+    environment:
+      - DISPLAY=${DISPLAY}
+      - WAYLAND_DISPLAY=${WAYLAND_DISPLAY}
+      - XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR}
+      - QT_QPA_PLATFORM=xcb
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY:-wayland-0}:/tmp/wayland-0:ro
+      - .:/workspace
+      - ./license.lic:/home/pymol/.pymol/license.lic:ro
+    devices:
+      - /dev/dri:/dev/dri
+    network_mode: host
+    ipc: host
+    stdin_open: true
+    tty: true

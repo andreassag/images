@@ -33,7 +33,7 @@ else
   fail "Version string missing (output: ${OUTPUT:0:200})"
 fi
 
-# 3. Help output mentions cblaster
+# 3. Help output sanity
 echo ""
 echo "3) Help output sanity"
 if OUTPUT=$(docker run --rm "${IMAGE}" --help 2>&1) && \
@@ -50,6 +50,15 @@ if docker run --rm --entrypoint cagecleaner "${IMAGE}" --help >/dev/null 2>&1; t
   pass "cagecleaner is installed and shows help"
 else
   fail "cagecleaner not available or broken"
+fi
+
+# 5. diamond availability
+echo ""
+echo "5) diamond availability"
+if docker run --rm --entrypoint diamond "${IMAGE}" --version >/dev/null 2>&1; then
+  pass "diamond is installed and shows version"
+else
+  fail "diamond not available or broken"
 fi
 
 # Summary

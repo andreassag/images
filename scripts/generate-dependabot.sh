@@ -21,17 +21,16 @@ updates:
       - github-actions
 HEADER
 
-# Find every Dockerfile, extract the directory relative to repo root,
+# Find every Dockerfile at the top tool level, extract the directory relative to repo root,
 # and emit a dependabot entry for each one.
-find "$REPO_ROOT" -mindepth 3 -maxdepth 3 -name Dockerfile \
+find "$REPO_ROOT" -mindepth 2 -maxdepth 2 -name Dockerfile \
     -not -path '*/.github/*' -printf '%P\n' | \
-  sed 's|/Dockerfile$||' | sort -t/ -k1,1 -k2,2V | while read -r dir; do
-    tool="${dir%%/*}"
+  sed 's|/Dockerfile$||' | sort | while read -r tool; do
     cat >> "$OUTPUT" << EOF
 
   # ${tool}
   - package-ecosystem: docker
-    directory: /${dir}
+    directory: /${tool}
     schedule:
       interval: weekly
     labels:
