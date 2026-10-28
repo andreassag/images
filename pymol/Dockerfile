@@ -2,7 +2,7 @@
 # Based on mambaorg/micromamba Debian-slim with Schrödinger pymol-bundle
 # Supports X11/Wayland GUI forwarding and headless rendering
 
-FROM mambaorg/micromamba:2.0.5-debian12-slim
+FROM mambaorg/micromamba:2.9.0-debian12-slim
 
 USER root
 
