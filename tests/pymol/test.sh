@@ -41,11 +41,12 @@ EXAMPLES_DIR="$(cd "${SCRIPT_DIR}/../../pymol/examples" 2>/dev/null && pwd || tr
 
 if [[ -n "${EXAMPLES_DIR}" && -f "${EXAMPLES_DIR}/render_structure.py" ]]; then
   TEST_DIR="$(mktemp -d)"
+  chmod 777 "${TEST_DIR}"
   cp "${EXAMPLES_DIR}/render_structure.py" "${TEST_DIR}/"
-  if docker run --rm -v "${TEST_DIR}":/workspace -w /workspace "${IMAGE}" pymol -cq render_structure.py >/dev/null 2>&1; then
+  if OUTPUT=$(docker run --rm -v "${TEST_DIR}":/workspace -w /workspace "${IMAGE}" pymol -cq render_structure.py 2>&1); then
     pass "PyMOL rendered structure in headless mode successfully"
   else
-    fail "PyMOL headless render_structure.py failed"
+    fail "PyMOL headless render_structure.py failed (output: ${OUTPUT:0:300})"
   fi
   rm -rf "${TEST_DIR}"
 else

@@ -1,6 +1,6 @@
 # Multi-stage Dockerfile for cblaster
 # Compiles DIAMOND from source, installs companion binaries (skani, mmseqs2, datasets, any2fasta),
-# builds cagecleaner and clinker, and builds cblaster from GitHub source.
+# builds cagecleaner and clinker, and builds cblaster from GitHub source / PyPI.
 
 # Stage 1: Builder
 FROM python:3.12-slim AS builder
@@ -10,6 +10,7 @@ WORKDIR /build
 # Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    python3-dev \
     cmake \
     zlib1g-dev \
     curl \
@@ -34,7 +35,7 @@ RUN mkdir -p /opt/companion/bin
 RUN set -eux; \
     ARCH="$(uname -m)"; \
     if [ "$ARCH" = "x86_64" ]; then \
-        curl -fsSL "https://github.com/bluenote-1577/skani/releases/download/latest/skani" -o /opt/companion/bin/skani; \
+        curl -fsSL -A "Mozilla/5.0" "https://github.com/bluenote-1577/skani/releases/download/latest/skani" -o /opt/companion/bin/skani; \
         chmod +x /opt/companion/bin/skani; \
     else \
         apt-get update && apt-get install -y --no-install-recommends cargo rustc; \
@@ -47,10 +48,10 @@ ARG MMSEQS2_VERSION=15-6f452
 RUN set -eux; \
     ARCH="$(uname -m)"; \
     if [ "$ARCH" = "x86_64" ]; then \
-        curl -fsSL "https://github.com/soedinglab/MMseqs2/releases/download/${MMSEQS2_VERSION}/mmseqs-linux-avx2.tar.gz" -o mmseqs.tar.gz || \
-        curl -fsSL "https://github.com/soedinglab/MMseqs2/releases/download/${MMSEQS2_VERSION}/mmseqs-linux-sse41.tar.gz" -o mmseqs.tar.gz; \
+        curl -fsSL -A "Mozilla/5.0" "https://github.com/soedinglab/MMseqs2/releases/download/${MMSEQS2_VERSION}/mmseqs-linux-avx2.tar.gz" -o mmseqs.tar.gz || \
+        curl -fsSL -A "Mozilla/5.0" "https://github.com/soedinglab/MMseqs2/releases/download/${MMSEQS2_VERSION}/mmseqs-linux-sse41.tar.gz" -o mmseqs.tar.gz; \
     elif [ "$ARCH" = "aarch64" ]; then \
-        curl -fsSL "https://github.com/soedinglab/MMseqs2/releases/download/${MMSEQS2_VERSION}/mmseqs-linux-arm64.tar.gz" -o mmseqs.tar.gz; \
+        curl -fsSL -A "Mozilla/5.0" "https://github.com/soedinglab/MMseqs2/releases/download/${MMSEQS2_VERSION}/mmseqs-linux-arm64.tar.gz" -o mmseqs.tar.gz; \
     fi; \
     tar -xzf mmseqs.tar.gz; \
     cp mmseqs/bin/mmseqs /opt/companion/bin/; \
@@ -65,12 +66,12 @@ RUN set -eux; \
     elif [ "$ARCH" = "aarch64" ]; then \
         NCBI_ARCH="linux-arm64"; \
     fi; \
-    curl -fsSL "https://ftp.ncbi.nlm.nih.gov/pub/datasets/command-line/v2/${NCBI_ARCH}/datasets" -o /opt/companion/bin/datasets; \
+    curl -fsSL -A "Mozilla/5.0" "https://ftp.ncbi.nlm.nih.gov/pub/datasets/command-line/v2/${NCBI_ARCH}/datasets" -o /opt/companion/bin/datasets; \
     chmod +x /opt/companion/bin/datasets
 
 # 4. any2fasta (Perl script)
 RUN set -eux; \
-    curl -fsSL "https://raw.githubusercontent.com/tseemann/any2fasta/master/any2fasta" -o /opt/companion/bin/any2fasta; \
+    curl -fsSL -A "Mozilla/5.0" "https://raw.githubusercontent.com/tseemann/any2fasta/master/any2fasta" -o /opt/companion/bin/any2fasta; \
     chmod +x /opt/companion/bin/any2fasta
 
 # Create virtual environment
@@ -80,17 +81,19 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Upgrade pip and install wheel / setuptools
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# Install PySimpleGUI-4-foss, clinker-py, and cagecleaner
+# Install PySimpleGUI-4-foss, clinker, and cagecleaner dependencies
 RUN pip install --no-cache-dir \
     PySimpleGUI-4-foss \
-    clinker-py \
-    cagecleaner
+    clinker \
+    pandas \
+    networkx \
+    skder \
+    && pip install --no-cache-dir --no-deps cagecleaner
 
 # Tool version argument
 ARG TOOL_VERSION=1.4.0
 
-# Download and install cblaster from official GitHub source tarball
-# Handle tag formatting (v1.4 for 1.4.0 or v${TOOL_VERSION}) and patch PySimpleGUI dependency
+# Download and install cblaster from official GitHub source tarball or PyPI
 RUN set -eux; \
     TAG="v${TOOL_VERSION}"; \
     if [ "${TOOL_VERSION}" = "1.4.0" ]; then \
@@ -98,14 +101,18 @@ RUN set -eux; \
     fi; \
     TAR_URL="https://github.com/gamcil/cblaster/archive/refs/tags/${TAG}.tar.gz"; \
     echo "Downloading cblaster ${TAG} from ${TAR_URL}..."; \
-    curl -fsSL "${TAR_URL}" -o cblaster.tar.gz; \
-    mkdir src && tar -xzf cblaster.tar.gz -C src --strip-components=1; \
-    cd src; \
-    if [ -f setup.py ]; then \
-        sed -i 's/"PySimpleGUI"/"PySimpleGUI-4-foss"/g' setup.py; \
-        sed -i "s/'PySimpleGUI'/'PySimpleGUI-4-foss'/g" setup.py; \
+    if curl -fsSL -A "Mozilla/5.0" "${TAR_URL}" -o cblaster.tar.gz; then \
+        mkdir src && tar -xzf cblaster.tar.gz -C src --strip-components=1; \
+        cd src; \
+        if [ -f setup.py ]; then \
+            sed -i 's/"PySimpleGUI"/"PySimpleGUI-4-foss"/g' setup.py; \
+            sed -i "s/'PySimpleGUI'/'PySimpleGUI-4-foss'/g" setup.py; \
+        fi; \
+        pip install --no-cache-dir --no-build-isolation .; \
+    else \
+        echo "Falling back to pip install cblaster==${TOOL_VERSION}..."; \
+        pip install --no-cache-dir --no-build-isolation "cblaster==${TOOL_VERSION}"; \
     fi; \
-    pip install --no-cache-dir .; \
     find /opt/venv -type f -name '*.pyc' -delete; \
     find /opt/venv -type d -name '__pycache__' -exec rm -rf {} +
 

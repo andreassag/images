@@ -27,23 +27,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user pymol (UID 1000, GID 1000)
-USER root
 RUN groupadd -g 1000 pymol \
     && useradd -u 1000 -g pymol -m -s /bin/bash pymol \
     && mkdir -p /home/pymol/.pymol /workspace \
     && chown -R 1000:1000 /home/pymol /workspace
 
 # Copy default configurations
-COPY pymolrc /home/pymol/.pymolrc
-COPY pymolrc.py /home/pymol/.pymolrc.py
-RUN chown 1000:1000 /home/pymol/.pymolrc /home/pymol/.pymolrc.py
-
-# Switch to pymol user to install conda packages in base prefix
-USER pymol
+COPY --chown=1000:1000 pymolrc /home/pymol/.pymolrc
+COPY --chown=1000:1000 pymolrc.py /home/pymol/.pymolrc.py
 
 ARG TOOL_VERSION=3.0.0
 
-# Install pymol-bundle from conda-forge and schrodinger channels
+# Install pymol-bundle from conda-forge and schrodinger channels as root
 RUN micromamba install -y -n base \
     -c conda-forge \
     -c schrodinger \
@@ -51,6 +46,9 @@ RUN micromamba install -y -n base \
     && micromamba clean --all --yes \
     && find /opt/conda -follow -type f -name '*.a' -delete \
     && find /opt/conda -follow -type f -name '*.pyc' -delete
+
+# Switch to pymol user
+USER pymol
 
 ENV PATH="/opt/conda/bin:$PATH"
 WORKDIR /workspace

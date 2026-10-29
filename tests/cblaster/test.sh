@@ -46,19 +46,19 @@ fi
 # 4. cagecleaner is callable
 echo ""
 echo "4) cagecleaner availability"
-if docker run --rm --entrypoint cagecleaner "${IMAGE}" --help >/dev/null 2>&1; then
+if OUTPUT=$(docker run --rm --entrypoint cagecleaner "${IMAGE}" --help 2>&1); then
   pass "cagecleaner is installed and shows help"
 else
-  fail "cagecleaner not available or broken"
+  fail "cagecleaner not available or broken (output: ${OUTPUT:0:300})"
 fi
 
 # 5. diamond availability
 echo ""
 echo "5) diamond availability"
-if docker run --rm --entrypoint diamond "${IMAGE}" --version >/dev/null 2>&1; then
+if OUTPUT=$(docker run --rm --entrypoint diamond "${IMAGE}" --version 2>&1); then
   pass "diamond is installed and shows version"
 else
-  fail "diamond not available or broken"
+  fail "diamond not available or broken (output: ${OUTPUT:0:300})"
 fi
 
 # Summary

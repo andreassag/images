@@ -1,5 +1,5 @@
 # Multi-stage Dockerfile for defense-finder
-# Compiles HMMER 3.4 from source and installs defense-finder from GitHub source tarball
+# Compiles HMMER 3.4 from source and installs defense-finder from GitHub source tarball / PyPI
 
 # Stage 1: Builder
 FROM python:3.12-slim AS builder
@@ -9,6 +9,7 @@ WORKDIR /build
 # Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    python3-dev \
     curl \
     ca-certificates \
     git \
@@ -17,9 +18,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Compile HMMER 3.4 from upstream source
 ARG HMMER_VERSION=3.4
 RUN set -eux; \
-    curl -fsSL "http://eddylab.org/software/hmmer/hmmer-${HMMER_VERSION}.tar.gz" -o hmmer.tar.gz; \
-    tar -xzf hmmer.tar.gz; \
-    cd "hmmer-${HMMER_VERSION}"; \
+    if ! curl -fsSL -A "Mozilla/5.0" "http://eddylab.org/software/hmmer/hmmer-${HMMER_VERSION}.tar.gz" -o hmmer.tar.gz; then \
+        echo "Direct tarball download failed, compiling HMMER + Easel from GitHub..."; \
+        git clone --depth 1 --branch "hmmer-${HMMER_VERSION}" https://github.com/EddyRivasLab/hmmer.git "hmmer-${HMMER_VERSION}"; \
+        cd "hmmer-${HMMER_VERSION}"; \
+        git clone --depth 1 https://github.com/EddyRivasLab/easel.git easel; \
+        apt-get update && apt-get install -y --no-install-recommends autoconf; \
+        autoconf; \
+        (cd easel && autoconf); \
+    else \
+        tar -xzf hmmer.tar.gz; \
+        cd "hmmer-${HMMER_VERSION}"; \
+    fi; \
     ./configure --prefix=/usr/local; \
     make -j"$(nproc)"; \
     make install; \
@@ -38,14 +48,18 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 # Tool version argument
 ARG TOOL_VERSION=2.0.1
 
-# Download and install defense-finder from official GitHub source tarball
+# Download and install defense-finder from official GitHub source tarball or PyPI
 RUN set -eux; \
     TAR_URL="https://github.com/mdmparis/defense-finder/archive/refs/tags/v${TOOL_VERSION}.tar.gz"; \
     echo "Downloading defense-finder v${TOOL_VERSION} from ${TAR_URL}..."; \
-    curl -fsSL "${TAR_URL}" -o defense-finder.tar.gz; \
-    mkdir src && tar -xzf defense-finder.tar.gz -C src --strip-components=1; \
-    cd src; \
-    pip install --no-cache-dir .; \
+    if curl -fsSL -A "Mozilla/5.0" "${TAR_URL}" -o defense-finder.tar.gz; then \
+        mkdir src && tar -xzf defense-finder.tar.gz -C src --strip-components=1; \
+        cd src; \
+        pip install --no-cache-dir --pre .; \
+    else \
+        echo "Falling back to pip install mdmparis-defense-finder==${TOOL_VERSION}..."; \
+        pip install --no-cache-dir --pre "mdmparis-defense-finder==${TOOL_VERSION}"; \
+    fi; \
     find /opt/venv -type f -name '*.pyc' -delete; \
     find /opt/venv -type d -name '__pycache__' -exec rm -rf {} +
 
