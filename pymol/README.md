@@ -98,5 +98,5 @@ This will fetch the structure (e.g. `1crn`), apply styles, ray-trace, and output
 ## Building Locally
 
 ```bash
-docker build -t ghcr.io/andreassag/pymol:latest --build-arg TOOL_VERSION=3.0.0 .
+docker build -t ghcr.io/andreassag/pymol:latest --build-arg TOOL_VERSION=3.1.6.1 .
 ```

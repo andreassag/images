@@ -81,14 +81,22 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Upgrade pip and install wheel / setuptools
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# Install PySimpleGUI-4-foss, clinker, and cagecleaner dependencies
+# Install Python dependencies for clinker, cagecleaner, and cblaster
 RUN pip install --no-cache-dir \
     PySimpleGUI-4-foss \
     clinker \
     pandas \
     networkx \
-    skder \
-    && pip install --no-cache-dir --no-deps cagecleaner
+    tqdm \
+    requests \
+    gffutils \
+    appdirs \
+    defusedxml \
+    aiohttp \
+    seaborn \
+    matplotlib \
+    && pip install --no-cache-dir --no-deps cagecleaner \
+    && pip install --no-cache-dir --no-deps git+https://github.com/raufs/skDER.git
 
 # Tool version argument
 ARG TOOL_VERSION=1.4.0
@@ -107,11 +115,12 @@ RUN set -eux; \
         if [ -f setup.py ]; then \
             sed -i 's/"PySimpleGUI"/"PySimpleGUI-4-foss"/g' setup.py; \
             sed -i "s/'PySimpleGUI'/'PySimpleGUI-4-foss'/g" setup.py; \
+            sed -i '/genomicsqlite/d' setup.py; \
         fi; \
-        pip install --no-cache-dir --no-build-isolation .; \
+        pip install --no-cache-dir --no-deps .; \
     else \
         echo "Falling back to pip install cblaster==${TOOL_VERSION}..."; \
-        pip install --no-cache-dir --no-build-isolation "cblaster==${TOOL_VERSION}"; \
+        pip install --no-cache-dir --no-deps "cblaster==${TOOL_VERSION}"; \
     fi; \
     find /opt/venv -type f -name '*.pyc' -delete; \
     find /opt/venv -type d -name '__pycache__' -exec rm -rf {} +

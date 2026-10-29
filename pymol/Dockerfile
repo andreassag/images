@@ -36,13 +36,14 @@ RUN groupadd -g 1000 pymol \
 COPY --chown=1000:1000 pymolrc /home/pymol/.pymolrc
 COPY --chown=1000:1000 pymolrc.py /home/pymol/.pymolrc.py
 
-ARG TOOL_VERSION=3.0.0
+ARG TOOL_VERSION=3.1.6.1
 
-# Install pymol-bundle from conda-forge and schrodinger channels as root
+# Install pymol and pymol-bundle from conda-forge and schrodinger channels as root
 RUN micromamba install -y -n base \
     -c conda-forge \
     -c schrodinger \
-    pymol-bundle=${TOOL_VERSION}* \
+    pymol=${TOOL_VERSION} \
+    pymol-bundle=${TOOL_VERSION} \
     && micromamba clean --all --yes \
     && find /opt/conda -follow -type f -name '*.a' -delete \
     && find /opt/conda -follow -type f -name '*.pyc' -delete

@@ -13,7 +13,7 @@ This repository provides reproducible, optimized OCI/Docker images built from so
 | **clinker** | Gene cluster comparison and visualisation (`clinker-py`) | 0.0.30, 0.0.31, 0.0.32 | Built from source (`python:3.12-slim`) |
 | **cblaster** | Remote homologue detection and gene cluster search (ships with `cagecleaner`, `diamond`, `skani`, `mmseqs2`, `datasets`, `any2fasta`) | 1.3.19, 1.3.20, 1.4.0 | Built from source (`python:3.12-slim`) |
 | **defense‑finder** | Systematic search for anti‑phage defense systems (ships with `HMMER 3.4`) | 1.3.0, 2.0.0, 2.0.1 | Built from source (`python:3.12-slim`) |
-| **pymol** | Molecular visualisation system with X11/Wayland GUI forwarding & publication presets | 3.0.0 | GUI / Headless (`micromamba:debian-slim`) |
+| **pymol** | Molecular visualisation system with X11/Wayland GUI forwarding & publication presets | 3.1.6.1 | GUI / Headless (`micromamba:debian-slim`) |
 
 Command-line utilities (`clinker`, `cblaster`, `defense-finder`) are built from upstream source code and official releases using multi-stage Python slim Dockerfiles rather than bioconda distributions, yielding lightweight, secure containers.
 
@@ -75,7 +75,7 @@ docker build -t cblaster:1.4.0 --build-arg TOOL_VERSION=1.4.0 ./cblaster
 docker build -t defense-finder:2.0.1 --build-arg TOOL_VERSION=2.0.1 ./defense-finder
 
 # pymol
-docker build -t pymol:3.0.0 --build-arg TOOL_VERSION=3.0.0 ./pymol
+docker build -t pymol:3.1.6.1 --build-arg TOOL_VERSION=3.1.6.1 ./pymol
 ```
 
 ---
@@ -98,8 +98,8 @@ docker build -t test/cblaster:1.4.0 --build-arg TOOL_VERSION=1.4.0 ./cblaster
 tests/cblaster/test.sh test/cblaster:1.4.0 1.4.0
 
 # Test pymol (headless)
-docker build -t test/pymol:3.0.0 --build-arg TOOL_VERSION=3.0.0 ./pymol
-tests/pymol/test.sh test/pymol:3.0.0 3.0.0
+docker build -t test/pymol:3.1.6.1 --build-arg TOOL_VERSION=3.1.6.1 ./pymol
+tests/pymol/test.sh test/pymol:3.1.6.1 3.1.6.1
 ```
 
 ---

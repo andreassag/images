@@ -17,16 +17,17 @@ echo "── Testing ${IMAGE} (expected v${EXPECTED_VERSION}) ──"
 # 1. Headless startup sanity check
 echo ""
 echo "1) Headless startup check"
-if docker run --rm "${IMAGE}" pymol -cq -d "print('HEADLESS_OK')" 2>&1 | grep -q "HEADLESS_OK"; then
+if OUTPUT=$(docker run --rm "${IMAGE}" pymol -cq -d "print('HEADLESS_OK')" 2>&1) && \
+   echo "${OUTPUT}" | grep -q "HEADLESS_OK"; then
   pass "PyMOL launches headlessly and executes command"
 else
-  fail "PyMOL headless command failed"
+  fail "PyMOL headless command failed (output: ${OUTPUT:0:200})"
 fi
 
 # 2. Version verification
 echo ""
 echo "2) Version check"
-if OUTPUT=$(docker run --rm "${IMAGE}" pymol -cq -d "import pymol; print('PYMOL_VERSION=' + str(pymol.__version__))" 2>&1) && \
+if OUTPUT=$(docker run --rm "${IMAGE}" pymol -cq -d "import pymol; print('PYMOL_VERSION=' + str(pymol.cmd.get_version()[0]))" 2>&1) && \
    echo "${OUTPUT}" | grep -q "PYMOL_VERSION=${EXPECTED_VERSION}"; then
   pass "Version matches ${EXPECTED_VERSION}"
 else
