@@ -2,7 +2,7 @@
 # Compiles HMMER 3.4 from source and installs defense-finder from GitHub source tarball / PyPI
 
 # Stage 1: Builder
-FROM python:3.12-slim AS builder
+FROM python:3.15-slim AS builder
 
 WORKDIR /build
 
@@ -64,7 +64,7 @@ RUN set -eux; \
     find /opt/venv -type d -name '__pycache__' -exec rm -rf {} +
 
 # Stage 2: Runtime
-FROM python:3.12-slim AS runtime
+FROM python:3.15-slim AS runtime
 
 # Install git and ca-certificates (required by defense-finder update / models download)
 RUN apt-get update && apt-get install -y --no-install-recommends \
