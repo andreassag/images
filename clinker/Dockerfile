@@ -2,7 +2,7 @@
 # Builds clinker from upstream source into a clean python:3.12-slim runtime
 
 # Stage 1: Builder
-FROM python:3.12-slim AS builder
+FROM python:3.15-slim AS builder
 
 WORKDIR /build
 
@@ -48,7 +48,7 @@ RUN set -eux; \
     find /opt/venv -type d -name '__pycache__' -exec rm -rf {} +
 
 # Stage 2: Runtime
-FROM python:3.12-slim AS runtime
+FROM python:3.15-slim AS runtime
 
 # Copy virtual environment from builder
 COPY --from=builder /opt/venv /opt/venv
